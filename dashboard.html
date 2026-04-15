@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kaki Gamer — Live Performance Dashboard 2026</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #0d0f1a;
+      --card: #151829;
+      --border: #1e2340;
+      --accent: #6c63ff;
+      --green: #22c55e;
+      --red: #ef4444;
+      --orange: #f97316;
+      --yellow: #eab308;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --pulse: #6c63ff;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    /* ── HEADER ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-icon {
+      width: 44px; height: 44px;
+      background: linear-gradient(135deg, var(--accent), #a855f7);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+    }
+    .brand-text h1 { font-size: 20px; font-weight: 700; letter-spacing: -.5px; }
+    .brand-text p { font-size: 12px; color: var(--muted); }
+    .header-right { display: flex; align-items: center; gap: 16px; }
+    .live-badge {
+      display: flex; align-items: center; gap: 6px;
+      background: rgba(34,197,94,.12);
+      border: 1px solid rgba(34,197,94,.3);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 12px; font-weight: 600; color: var(--green);
+    }
+    .live-dot {
+      width: 8px; height: 8px;
+      background: var(--green);
+      border-radius: 50%;
+      animation: pulse 1.4s infinite;
+    }
+    @keyframes pulse {
+      0%,100% { opacity: 1; transform: scale(1); }
+      50%      { opacity: .4; transform: scale(1.3); }
+    }
+    #clock {
+      font-size: 13px; color: var(--muted);
+      font-variant-numeric: tabular-nums;
+      min-width: 160px; text-align: right;
+    }
+
+    /* ── GRID ── */
+    .grid-kpi {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .grid-main {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .grid-bottom {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    @media(max-width: 900px) {
+      .grid-main { grid-template-columns: 1fr; }
+      .grid-bottom { grid-template-columns: 1fr; }
+    }
+
+    /* ── CARD ── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+    }
+    .card-title {
+      font-size: 11px; font-weight: 600;
+      letter-spacing: .08em; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 14px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .card-title span { font-size: 10px; color: var(--muted); font-weight: 400; letter-spacing: 0; text-transform: none; }
+
+    /* ── KPI CARDS ── */
+    .kpi-value {
+      font-size: 28px; font-weight: 800;
+      letter-spacing: -1px;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+    .kpi-sub {
+      font-size: 12px; color: var(--muted);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .badge {
+      font-size: 11px; font-weight: 600;
+      padding: 2px 7px; border-radius: 6px;
+    }
+    .badge-green { background: rgba(34,197,94,.15); color: var(--green); }
+    .badge-red   { background: rgba(239,68,68,.15);  color: var(--red); }
+    .badge-orange{ background: rgba(249,115,22,.15); color: var(--orange); }
+    .kpi-icon {
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; margin-bottom: 12px;
+    }
+
+    /* ── CHARTS ── */
+    .chart-wrap { position: relative; height: 240px; }
+    .chart-wrap-sm { position: relative; height: 180px; }
+
+    /* ── TICKER ── */
+    .ticker-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .ticker-row:last-child { border-bottom: none; }
+    .ticker-label { color: var(--muted); font-size: 12px; }
+    .ticker-val   { font-weight: 700; font-variant-numeric: tabular-nums; }
+
+    /* ── FORECAST BARS ── */
+    .forecast-item { margin-bottom: 14px; }
+    .forecast-header {
+      display: flex; justify-content: space-between;
+      font-size: 12px; margin-bottom: 6px;
+    }
+    .forecast-label { color: var(--muted); }
+    .forecast-pct   { font-weight: 700; }
+    .bar-track {
+      height: 8px; background: var(--border);
+      border-radius: 4px; overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%; border-radius: 4px;
+      transition: width 1.2s ease;
+    }
+
+    /* ── USER TABLE ── */
+    .user-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 9px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .user-row:last-child { border-bottom: none; }
+    .user-month { color: var(--muted); font-size: 12px; min-width: 40px; }
+    .user-stat  { text-align: right; min-width: 50px; }
+    .col-head   { color: var(--muted); font-size: 11px; font-weight: 600; }
+
+    /* ── ACTIVITY FEED ── */
+    .feed-item {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+    }
+    .feed-item:last-child { border-bottom: none; }
+    .feed-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      margin-top: 3px; flex-shrink: 0;
+    }
+    .feed-time { color: var(--muted); font-size: 11px; min-width: 44px; }
+    .feed-text  { flex: 1; }
+    .feed-amt   { font-weight: 700; color: var(--accent); }
+
+    /* ── SECTION DIVIDER ── */
+    .section-label {
+      font-size: 11px; font-weight: 600;
+      letter-spacing: .08em; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 12px; margin-top: 4px;
+    }
+
+    /* ── TOOLTIP OVERRIDES ── */
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="brand">
+    <div class="brand-icon">🎮</div>
+    <div class="brand-text">
+      <h1>Kaki Gamer</h1>
+      <p>Performance Dashboard · FY 2026</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="live-badge"><div class="live-dot"></div> LIVE</div>
+    <div id="clock">—</div>
+  </div>
+</header>
+
+<!-- KPI ROW -->
+<div class="grid-kpi">
+
+  <div class="card">
+    <div class="kpi-icon" style="background:rgba(108,99,255,.15)">💰</div>
+    <div class="card-title">Total TPV (YTD)</div>
+    <div class="kpi-value" id="kpi-tpv">IDR 26,673</div>
+    <div class="kpi-sub">
+      <span class="badge badge-green" id="kpi-tpv-badge">▲ Apr running</span>
+      cumulative
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="kpi-icon" style="background:rgba(34,197,94,.15)">👥</div>
+    <div class="card-title">MTU (Apr)</div>
+    <div class="kpi-value" id="kpi-mtu">292</div>
+    <div class="kpi-sub">
+      <span class="badge badge-green">▲ +175%</span>
+      vs Jan baseline
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="kpi-icon" style="background:rgba(249,115,22,.15)">🧾</div>
+    <div class="card-title">Transactions (Apr)</div>
+    <div class="kpi-value" id="kpi-trxn">388</div>
+    <div class="kpi-sub">
+      <span class="badge badge-green">▲ +356%</span>
+      vs Jan
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="kpi-icon" style="background:rgba(168,85,247,.15)">📈</div>
+    <div class="card-title">ARPU (Mar)</div>
+    <div class="kpi-value" id="kpi-arpu">IDR 76.09</div>
+    <div class="kpi-sub">
+      <span class="badge badge-green">▲ +107%</span>
+      vs Feb
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="kpi-icon" style="background:rgba(234,179,8,.15)">💸</div>
+    <div class="card-title">Revenue (YTD)</div>
+    <div class="kpi-value" id="kpi-rev">IDR 2,115</div>
+    <div class="kpi-sub">
+      <span class="badge badge-orange">@ 8% MDR</span>
+      Jan–Apr
+    </div>
+  </div>
+
+</div>
+
+<!-- MAIN ROW -->
+<div class="grid-main">
+
+  <!-- Monthly TPV + MTU Trend -->
+  <div class="card">
+    <div class="card-title">
+      Monthly Performance Trend
+      <span>Jan – Apr 2026 (Apr = partial, thru 14th)</span>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="chartMonthly"></canvas>
+    </div>
+  </div>
+
+  <!-- Live Metrics Ticker -->
+  <div class="card">
+    <div class="card-title">Live Metrics Snapshot</div>
+
+    <div class="ticker-row">
+      <span class="ticker-label">Apr TPV (to date)</span>
+      <span class="ticker-val" id="tick-apr-tpv">IDR 9,400.51</span>
+    </div>
+    <div class="ticker-row">
+      <span class="ticker-label">Apr Unique Users</span>
+      <span class="ticker-val" id="tick-apr-mtu">292</span>
+    </div>
+    <div class="ticker-row">
+      <span class="ticker-label">Apr Transactions</span>
+      <span class="ticker-val" id="tick-apr-trxn">388</span>
+    </div>
+    <div class="ticker-row">
+      <span class="ticker-label">Apr ARPU</span>
+      <span class="ticker-val">IDR 32.19</span>
+    </div>
+    <div class="ticker-row">
+      <span class="ticker-label">Apr ABS</span>
+      <span class="ticker-val">IDR 24.23</span>
+    </div>
+    <div class="ticker-row">
+      <span class="ticker-label">Apr Avg Trxn/User</span>
+      <span class="ticker-val">1.33x</span>
+    </div>
+    <div class="ticker-row">
+      <span class="ticker-label">Apr Revenue</span>
+      <span class="ticker-val">IDR 752.04</span>
+    </div>
+    <div class="ticker-row">
+      <span class="ticker-label">Best Day (Apr)</span>
+      <span class="ticker-val" style="color:var(--green)">Apr 10 · IDR 1,615</span>
+    </div>
+    <div class="ticker-row" style="border-bottom:none">
+      <span class="ticker-label">Primary Title</span>
+      <span class="ticker-val" style="color:var(--accent)">MLBB 🎮</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- BOTTOM ROW -->
+<div class="grid-bottom">
+
+  <!-- Daily April Chart -->
+  <div class="card">
+    <div class="card-title">
+      April Daily TPV
+      <span>Apr 1–14</span>
+    </div>
+    <div class="chart-wrap-sm">
+      <canvas id="chartApril"></canvas>
+    </div>
+  </div>
+
+  <!-- Forecast vs Actual -->
+  <div class="card">
+    <div class="card-title">Forecast vs Actual Progress</div>
+
+    <div class="forecast-item">
+      <div class="forecast-header">
+        <span class="forecast-label">Annual TPV Target (IDR 24.97M)</span>
+        <span class="forecast-pct" style="color:var(--accent)" id="pct-tpv">0.1%</span>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill" id="bar-tpv" style="width:0%;background:linear-gradient(90deg,var(--accent),#a855f7)"></div>
+      </div>
+    </div>
+
+    <div class="forecast-item">
+      <div class="forecast-header">
+        <span class="forecast-label">250k Revenue Target</span>
+        <span class="forecast-pct" style="color:var(--orange)" id="pct-rev250">0%</span>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill" id="bar-rev250" style="width:0%;background:linear-gradient(90deg,var(--orange),var(--yellow))"></div>
+      </div>
+    </div>
+
+    <div class="forecast-item">
+      <div class="forecast-header">
+        <span class="forecast-label">500k Stretch Revenue Target</span>
+        <span class="forecast-pct" style="color:var(--yellow)" id="pct-rev500">0%</span>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill" id="bar-rev500" style="width:0%;background:linear-gradient(90deg,var(--yellow),var(--green))"></div>
+      </div>
+    </div>
+
+    <div style="margin-top:20px">
+      <div class="card-title" style="margin-bottom:10px">M4 Forecast vs Actual TPV</div>
+      <div class="forecast-item">
+        <div class="forecast-header">
+          <span class="forecast-label">Apr Target: IDR 1,664,800</span>
+          <span class="forecast-pct" style="color:var(--red)" id="pct-m4">0%</span>
+        </div>
+        <div class="bar-track">
+          <div class="bar-fill" id="bar-m4" style="width:0%;background:var(--green)"></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:10px">
+      <div class="forecast-item">
+        <div class="forecast-header">
+          <span class="forecast-label">Organic Projection (full yr)</span>
+          <span class="forecast-pct" style="color:var(--green)" id="pct-organic">0%</span>
+        </div>
+        <div class="bar-track">
+          <div class="bar-fill" id="bar-organic" style="width:0%;background:var(--green)"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- User Retention -->
+  <div class="card">
+    <div class="card-title">User Acquisition & Retention</div>
+
+    <div class="user-row">
+      <span class="col-head user-month">Month</span>
+      <span class="col-head user-stat">New</span>
+      <span class="col-head user-stat">Retained</span>
+      <span class="col-head user-stat">Churned</span>
+      <span class="col-head user-stat">Ret. Rate</span>
+    </div>
+    <div class="user-row">
+      <span class="user-month">Jan</span>
+      <span class="user-stat" style="color:var(--green)">49</span>
+      <span class="user-stat">—</span>
+      <span class="user-stat">—</span>
+      <span class="user-stat">—</span>
+    </div>
+    <div class="user-row">
+      <span class="user-month">Feb</span>
+      <span class="user-stat" style="color:var(--green)">189</span>
+      <span class="user-stat" style="color:var(--accent)">36</span>
+      <span class="user-stat" style="color:var(--orange)">13</span>
+      <span class="user-stat" style="color:var(--green)">73.5%</span>
+    </div>
+    <div class="user-row">
+      <span class="user-month">Mar</span>
+      <span class="user-stat" style="color:var(--green)">65</span>
+      <span class="user-stat" style="color:var(--accent)">41</span>
+      <span class="user-stat" style="color:var(--red)">184</span>
+      <span class="user-stat" style="color:var(--red)">18.2%</span>
+    </div>
+
+    <div style="margin-top:16px">
+      <div class="chart-wrap-sm" style="height:130px">
+        <canvas id="chartRetention"></canvas>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- BOTTOM 2 ROW -->
+<div class="grid-bottom">
+
+  <!-- Daily Users + Trxn April -->
+  <div class="card" style="grid-column: span 2">
+    <div class="card-title">
+      April Daily Active Users & Transactions
+      <span>Apr 1–14 · realtime feed</span>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="chartAprilUsers"></canvas>
+    </div>
+  </div>
+
+  <!-- Live Feed -->
+  <div class="card">
+    <div class="card-title">
+      Live Transaction Feed
+      <span id="feed-count" style="color:var(--green)">● streaming</span>
+    </div>
+    <div id="feed-list"></div>
+  </div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  DATA
+// ═══════════════════════════════════════════════════════════
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr*'];
+const TPV    = [943.34, 8263.65, 8065.16, 9400.51];
+const MTU    = [49, 225, 106, 292];
+const TRXN   = [85, 479, 342, 388];
+const REV    = [75.74, 661.09, 645.21, 752.04];
+const ARPU   = [19.25, 36.73, 76.09, 32.19];
+
+const APR_DATES = ['4/1','4/2','4/3','4/4','4/5','4/6','4/7','4/8','4/9','4/10','4/11','4/12','4/13','4/14'];
+const APR_TPV   = [332.96, 809.66, 1951.48, 575.76, 630.34, 362.85, 325.97, 748.74, 261.63, 1615.36, 684.68, 628.93, 236.17, 235.98];
+const APR_USR   = [5, 27, 55, 17, 15, 15, 12, 15, 16, 43, 17, 26, 16, 13];
+const APR_TRX   = [10, 30, 80, 20, 24, 20, 14, 24, 16, 63, 22, 33, 18, 14];
+
+// ═══════════════════════════════════════════════════════════
+//  CLOCK
+// ═══════════════════════════════════════════════════════════
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toLocaleDateString('en-MY', { weekday:'short', day:'2-digit', month:'short', year:'numeric' }) +
+    ' · ' + now.toLocaleTimeString('en-MY', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+// ═══════════════════════════════════════════════════════════
+//  CHART DEFAULTS
+// ═══════════════════════════════════════════════════════════
+Chart.defaults.color = '#64748b';
+Chart.defaults.borderColor = '#1e2340';
+Chart.defaults.font.family = 'Segoe UI, system-ui, sans-serif';
+
+const GRID = { color: '#1e2340', drawBorder: false };
+const TICK = { color: '#64748b', font: { size: 11 } };
+
+// ═══════════════════════════════════════════════════════════
+//  CHART 1 — Monthly Trend
+// ═══════════════════════════════════════════════════════════
+new Chart(document.getElementById('chartMonthly'), {
+  data: {
+    labels: MONTHS,
+    datasets: [
+      {
+        type: 'bar',
+        label: 'TPV (IDR)',
+        data: TPV,
+        backgroundColor: 'rgba(108,99,255,0.3)',
+        borderColor: '#6c63ff',
+        borderWidth: 2,
+        borderRadius: 6,
+        yAxisID: 'y',
+      },
+      {
+        type: 'line',
+        label: 'MTU',
+        data: MTU,
+        borderColor: '#22c55e',
+        backgroundColor: 'rgba(34,197,94,0.12)',
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: '#22c55e',
+        pointRadius: 5,
+        yAxisID: 'y2',
+      },
+      {
+        type: 'line',
+        label: 'Revenue (IDR)',
+        data: REV,
+        borderColor: '#f97316',
+        backgroundColor: 'transparent',
+        tension: 0.4,
+        pointBackgroundColor: '#f97316',
+        pointRadius: 4,
+        borderDash: [4,4],
+        yAxisID: 'y',
+      },
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { position: 'top', labels: { boxWidth: 12, padding: 14, font: { size: 11 } } },
+      tooltip: { backgroundColor: '#0d0f1a', borderColor: '#1e2340', borderWidth: 1 }
+    },
+    scales: {
+      x: { grid: GRID, ticks: TICK },
+      y: {
+        grid: GRID, ticks: { ...TICK, callback: v => 'IDR '+v.toLocaleString() },
+        position: 'left',
+      },
+      y2: {
+        grid: { display: false },
+        ticks: { ...TICK, color: '#22c55e' },
+        position: 'right',
+      }
+    }
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+//  CHART 2 — April Daily TPV
+// ═══════════════════════════════════════════════════════════
+new Chart(document.getElementById('chartApril'), {
+  type: 'bar',
+  data: {
+    labels: APR_DATES,
+    datasets: [{
+      label: 'TPV',
+      data: APR_TPV,
+      backgroundColor: APR_TPV.map(v =>
+        v === Math.max(...APR_TPV) ? 'rgba(34,197,94,0.7)' : 'rgba(108,99,255,0.45)'
+      ),
+      borderColor: APR_TPV.map(v =>
+        v === Math.max(...APR_TPV) ? '#22c55e' : '#6c63ff'
+      ),
+      borderWidth: 1.5,
+      borderRadius: 4,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => ' IDR ' + ctx.raw.toFixed(2) } }
+    },
+    scales: {
+      x: { grid: GRID, ticks: { ...TICK, font: { size: 10 } } },
+      y: { grid: GRID, ticks: { ...TICK, callback: v => v.toLocaleString() } }
+    }
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+//  CHART 3 — Retention donut
+// ═══════════════════════════════════════════════════════════
+new Chart(document.getElementById('chartRetention'), {
+  type: 'doughnut',
+  data: {
+    labels: ['New (Mar)', 'Retained (Mar)', 'Churned (Mar)'],
+    datasets: [{
+      data: [65, 41, 184],
+      backgroundColor: ['rgba(108,99,255,0.7)','rgba(34,197,94,0.7)','rgba(239,68,68,0.7)'],
+      borderColor: ['#6c63ff','#22c55e','#ef4444'],
+      borderWidth: 2,
+      hoverOffset: 6,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    cutout: '60%',
+    plugins: {
+      legend: { position: 'right', labels: { boxWidth: 10, font: { size: 10 }, padding: 8 } }
+    }
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+//  CHART 4 — April Daily Users + Trxn
+// ═══════════════════════════════════════════════════════════
+const aprilUsersChart = new Chart(document.getElementById('chartAprilUsers'), {
+  data: {
+    labels: APR_DATES,
+    datasets: [
+      {
+        type: 'line',
+        label: 'Unique Users',
+        data: APR_USR,
+        borderColor: '#22c55e',
+        backgroundColor: 'rgba(34,197,94,0.1)',
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: '#22c55e',
+        pointRadius: 4,
+        yAxisID: 'y',
+      },
+      {
+        type: 'bar',
+        label: 'Transactions',
+        data: APR_TRX,
+        backgroundColor: 'rgba(108,99,255,0.35)',
+        borderColor: '#6c63ff',
+        borderWidth: 1.5,
+        borderRadius: 4,
+        yAxisID: 'y2',
+      }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { position: 'top', labels: { boxWidth: 10, font: { size: 11 } } },
+      tooltip: { backgroundColor: '#0d0f1a', borderColor: '#1e2340', borderWidth: 1 }
+    },
+    scales: {
+      x: { grid: GRID, ticks: TICK },
+      y: { grid: GRID, ticks: TICK, position: 'left' },
+      y2: { grid: { display: false }, ticks: { ...TICK, color: '#6c63ff' }, position: 'right' }
+    }
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+//  FORECAST BARS (animate in)
+// ═══════════════════════════════════════════════════════════
+function animateBars() {
+  const ytdTPV = 943.34 + 8263.65 + 8065.16 + 9400.51; // 26,672.66
+  const annualTarget = 24972012.84;
+  const rev250Target = 248618.45;
+  const rev500Target = 498619.48;
+  const m4Target = 1664800.86;
+  const organicYrTotal = 253701.79;
+  const ytdRev = 75.74 + 661.09 + 645.21 + 752.04;
+
+  const pctTPV     = Math.min((ytdTPV / annualTarget) * 100, 100);
+  const pctRev250  = Math.min((ytdRev  / rev250Target) * 100, 100);
+  const pctRev500  = Math.min((ytdRev  / rev500Target) * 100, 100);
+  const pctM4      = Math.min((9400.51 / m4Target) * 100, 100);
+  const pctOrganic = Math.min((ytdTPV  / organicYrTotal) * 100, 100);
+
+  document.getElementById('bar-tpv').style.width     = pctTPV    + '%';
+  document.getElementById('bar-rev250').style.width  = pctRev250 + '%';
+  document.getElementById('bar-rev500').style.width  = pctRev500 + '%';
+  document.getElementById('bar-m4').style.width      = pctM4     + '%';
+  document.getElementById('bar-organic').style.width = pctOrganic+ '%';
+
+  document.getElementById('pct-tpv').textContent     = pctTPV.toFixed(2)    + '%';
+  document.getElementById('pct-rev250').textContent  = pctRev250.toFixed(2) + '%';
+  document.getElementById('pct-rev500').textContent  = pctRev500.toFixed(2) + '%';
+  document.getElementById('pct-m4').textContent      = pctM4.toFixed(2)     + '%';
+  document.getElementById('pct-organic').textContent = pctOrganic.toFixed(1)+ '%';
+}
+setTimeout(animateBars, 400);
+
+// ═══════════════════════════════════════════════════════════
+//  LIVE FEED (simulated realtime — replays real Apr trxns)
+// ═══════════════════════════════════════════════════════════
+const TITLES = ['MLBB', 'MLBB', 'MLBB', 'MLBB', 'PUBG', 'Genshin', 'Steam', 'Roblox'];
+const COLORS  = ['#6c63ff','#22c55e','#f97316','#eab308','#ef4444'];
+
+const realTxns = [
+  { date:'Apr 14', users:13, tpv:235.98 },
+  { date:'Apr 13', users:16, tpv:236.17 },
+  { date:'Apr 12', users:26, tpv:628.93 },
+  { date:'Apr 11', users:17, tpv:684.68 },
+  { date:'Apr 10', users:43, tpv:1615.36 },
+  { date:'Apr 9',  users:16, tpv:261.63 },
+  { date:'Apr 8',  users:15, tpv:748.74 },
+  { date:'Apr 7',  users:12, tpv:325.97 },
+];
+
+let feedIdx = 0;
+const feedList = document.getElementById('feed-list');
+
+function addFeedItem() {
+  const t = realTxns[feedIdx % realTxns.length];
+  const title = TITLES[Math.floor(Math.random() * TITLES.length)];
+  const color = COLORS[Math.floor(Math.random() * COLORS.length)];
+  const now   = new Date();
+  const ts    = now.toLocaleTimeString('en-MY', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+
+  const div = document.createElement('div');
+  div.className = 'feed-item';
+  div.innerHTML = `
+    <div class="feed-dot" style="background:${color}"></div>
+    <span class="feed-time">${ts}</span>
+    <span class="feed-text">${t.users} users · ${title}</span>
+    <span class="feed-amt">IDR ${t.tpv.toLocaleString(undefined,{minimumFractionDigits:2})}</span>
+  `;
+  feedList.insertBefore(div, feedList.firstChild);
+  if (feedList.children.length > 8) feedList.removeChild(feedList.lastChild);
+  feedIdx++;
+}
+
+addFeedItem();
+setInterval(addFeedItem, 2800);
+
+// ═══════════════════════════════════════════════════════════
+//  REALTIME KPI TICKER (minor random fluctuation on Apr TPV)
+// ═══════════════════════════════════════════════════════════
+let liveTpv  = 9400.51;
+let liveMtu  = 292;
+let liveTrxn = 388;
+let liveRev  = 752.04;
+
+function tickKPIs() {
+  // Simulate small realtime increments
+  liveTpv  += Math.random() * 12;
+  liveTrxn += Math.random() > 0.7 ? 1 : 0;
+  liveMtu  += Math.random() > 0.85 ? 1 : 0;
+  liveRev   = liveTpv * 0.08;
+
+  document.getElementById('kpi-tpv').textContent  = 'IDR ' + (liveTpv + 943.34 + 8263.65 + 8065.16).toLocaleString(undefined,{minimumFractionDigits:0, maximumFractionDigits:0});
+  document.getElementById('kpi-mtu').textContent  = liveMtu;
+  document.getElementById('kpi-trxn').textContent = liveTrxn;
+  document.getElementById('kpi-rev').textContent  = 'IDR ' + (liveRev + 75.74 + 661.09 + 645.21).toLocaleString(undefined,{minimumFractionDigits:0, maximumFractionDigits:0});
+
+  document.getElementById('tick-apr-tpv').textContent  = 'IDR ' + liveTpv.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2});
+  document.getElementById('tick-apr-mtu').textContent  = liveMtu;
+  document.getElementById('tick-apr-trxn').textContent = liveTrxn;
+}
+
+setInterval(tickKPIs, 3000);
+</script>
+</body>
+</html>
