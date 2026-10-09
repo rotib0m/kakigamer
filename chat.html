@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kaki Chat</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #ffffff; --text: #1d2330; --muted: #6b7385;
+    --border: #e1e4ea; --accent: #e8590c; --accent-text: #ffffff;
+    --user: #fff1e6; --bot: #ffffff; --note: #eef6ff; --note-border: #b9d7f5;
+    --danger: #c92a2a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #12151b; --panel: #1b1f27; --text: #e7eaf0; --muted: #98a0b3;
+      --border: #2c323e; --accent: #ff7a2f; --accent-text: #12151b;
+      --user: #3a2618; --bot: #1b1f27; --note: #172436; --note-border: #2d4d72;
+      --danger: #ff6b6b;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #12151b; --panel: #1b1f27; --text: #e7eaf0; --muted: #98a0b3;
+    --border: #2c323e; --accent: #ff7a2f; --accent-text: #12151b;
+    --user: #3a2618; --bot: #1b1f27; --note: #172436; --note-border: #2d4d72;
+    --danger: #ff6b6b;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+    display: flex; flex-direction: column;
+  }
+  header {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--panel);
+  }
+  header h1 { font-size: 18px; margin: 0; flex: 1; }
+  header label { font-size: 14px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  select, input[type="password"], textarea, button { font: inherit; color: inherit; }
+  select, input[type="password"] {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 4px 8px;
+  }
+  button {
+    border: 1px solid var(--border); background: var(--panel); border-radius: 8px;
+    padding: 6px 12px; cursor: pointer;
+  }
+  button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  button:disabled { opacity: .5; cursor: default; }
+  button.recording { background: var(--danger); color: #fff; border-color: var(--danger); }
+  #setup {
+    max-width: 560px; margin: 32px auto; padding: 20px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 12px;
+  }
+  #setup p { color: var(--muted); font-size: 14px; }
+  #setup .row { display: flex; gap: 8px; }
+  #setup input { flex: 1; }
+  main { flex: 1; overflow-y: auto; padding: 16px; }
+  #log { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+  .msg {
+    padding: 10px 14px; border-radius: 12px; border: 1px solid var(--border);
+    white-space: pre-wrap; overflow-wrap: anywhere; max-width: 92%;
+  }
+  .msg.user { background: var(--user); align-self: flex-end; }
+  .msg.assistant { background: var(--bot); align-self: flex-start; }
+  .msg.error { border-color: var(--danger); color: var(--danger); align-self: center; }
+  .msg .meta { font-size: 12px; color: var(--muted); margin-top: 6px; display: flex; gap: 8px; align-items: center; }
+  .msg .meta button { padding: 0 6px; font-size: 12px; }
+  .coach {
+    margin-top: 8px; padding: 8px 10px; background: var(--note); border: 1px solid var(--note-border);
+    border-radius: 8px; font-size: 14px;
+  }
+  .empty { text-align: center; color: var(--muted); margin-top: 40px; }
+  footer { border-top: 1px solid var(--border); background: var(--panel); padding: 12px 16px; }
+  form { max-width: 760px; margin: 0 auto; display: flex; gap: 8px; align-items: flex-end; }
+  textarea {
+    flex: 1; resize: none; min-height: 44px; max-height: 200px; padding: 10px;
+    border: 1px solid var(--border); border-radius: 10px; background: var(--bg);
+  }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Kaki Chat</h1>
+  <label>Reply in
+    <select id="replyLang">
+      <option value="auto">My language (auto)</option>
+      <option value="English">English</option>
+      <option value="Bahasa Melayu">Bahasa Melayu</option>
+      <option value="Bahasa Indonesia">Bahasa Indonesia</option>
+      <option value="Simplified Chinese">中文</option>
+      <option value="Tamil">தமிழ்</option>
+      <option value="Japanese">日本語</option>
+      <option value="Korean">한국어</option>
+      <option value="Thai">ไทย</option>
+      <option value="Vietnamese">Tiếng Việt</option>
+      <option value="Spanish">Español</option>
+      <option value="French">Français</option>
+      <option value="Arabic">العربية</option>
+    </select>
+  </label>
+  <label><input type="checkbox" id="coach"> English tips</label>
+  <label><input type="checkbox" id="speak"> Read aloud</label>
+  <button id="newChat" type="button">New chat</button>
+  <button id="forgetKey" type="button">Forget key</button>
+</header>
+
+<section id="setup" class="hidden">
+  <h2>Connect to Claude</h2>
+  <p>Paste your Anthropic API key (from console.anthropic.com). It is stored only in this browser and sent only to api.anthropic.com.</p>
+  <div class="row">
+    <input type="password" id="apiKey" placeholder="sk-ant-..." autocomplete="off">
+    <button class="primary" id="saveKey" type="button">Save</button>
+  </div>
+</section>
+
+<main id="scroller">
+  <div id="log"><p class="empty" id="empty">Say anything, in any language — English, Manglish, Bahasa, 中文, mixed… I'll keep up.</p></div>
+</main>
+
+<footer>
+  <form id="composer">
+    <button type="button" id="mic" title="Speak">🎤</button>
+    <textarea id="input" rows="1" placeholder="Type or speak in any language…"></textarea>
+    <button class="primary" id="send" type="submit">Send</button>
+  </form>
+</footer>
+
+<script type="module">
+import Anthropic from "https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@0.128.0/+esm";
+
+const MODEL = "claude-opus-5-5";
+const KEY_STORE = "kakichat.apiKey";
+const PREF_STORE = "kakichat.prefs";
+
+const $ = (id) => document.getElementById(id);
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+  del(k) { try { localStorage.removeItem(k); } catch {} },
+};
+
+let client = null;
+let history = [];          // Anthropic message params, append-only
+let busy = false;
+
+// ---------- settings ----------
+const prefs = (() => { try { return JSON.parse(store.get(PREF_STORE)) || {}; } catch { return {}; } })();
+$("replyLang").value = prefs.replyLang || "auto";
+$("coach").checked = !!prefs.coach;
+$("speak").checked = !!prefs.speak;
+for (const id of ["replyLang", "coach", "speak"]) {
+  $(id).addEventListener("change", () => {
+    store.set(PREF_STORE, JSON.stringify({
+      replyLang: $("replyLang").value, coach: $("coach").checked, speak: $("speak").checked,
+    }));
+  });
+}
+
+function systemPrompt() {
+  const lang = $("replyLang").value;
+  const parts = [
+    "You are a warm, curious conversation partner. The person may write in any language, " +
+    "in non-native or informal English, in dialects such as Manglish or Singlish, or mix several " +
+    "languages in one message. Understand their intent generously: never comment on spelling or " +
+    "grammar unless asked, and never make them feel judged.",
+    "Talk about whatever they want - everyday life, games, work, ideas, learning. Keep replies " +
+    "conversational and reasonably short unless they ask for depth, and ask follow-up questions " +
+    "when it helps the conversation flow.",
+    "Use the web_search tool when the person asks about current events, prices, or facts you are " +
+    "unsure of, and mention where the information came from.",
+    "Reply in plain text without Markdown headings or tables; short lists are fine.",
+  ];
+  parts.push(lang === "auto"
+    ? "Reply in the language the person is mainly using in their latest message. If they mix languages, you may mix the same way."
+    : `Always reply in ${lang}, even if the person writes in another language. Use simple, clear wording.`);
+  if ($("coach").checked) {
+    parts.push(
+      "The person is practising English. After your normal reply, if their latest message contained " +
+      "English with mistakes or unnatural phrasing, add a final section that starts on its own line " +
+      "with exactly 'English tip:' and gives at most two short, friendly suggestions (original -> " +
+      "more natural version). Skip the section entirely if their English was fine or they did not write in English."
+    );
+  }
+  return parts.join("\n\n");
+}
+
+// ---------- API key ----------
+function connect(key) {
+  client = new Anthropic({ apiKey: key, dangerouslyAllowBrowser: true });
+  $("setup").classList.add("hidden");
+}
+function requireKey() {
+  client = null;
+  $("setup").classList.remove("hidden");
+  $("apiKey").focus();
+}
+$("saveKey").addEventListener("click", () => {
+  const key = $("apiKey").value.trim();
+  if (!key) return;
+  store.set(KEY_STORE, key);
+  $("apiKey").value = "";
+  connect(key);
+});
+$("forgetKey").addEventListener("click", () => { store.del(KEY_STORE); requireKey(); });
+const savedKey = store.get(KEY_STORE);
+savedKey ? connect(savedKey) : requireKey();
+
+// ---------- rendering ----------
+function addBubble(role, text) {
+  $("empty")?.remove();
+  const el = document.createElement("div");
+  el.className = `msg ${role}`;
+  const body = document.createElement("div");
+  body.textContent = text;
+  el.append(body);
+  $("log").append(el);
+  scrollDown();
+  return { el, body };
+}
+function scrollDown() { $("scroller").scrollTop = $("scroller").scrollHeight; }
+
+function renderAssistant(bubble, text, meta) {
+  const marker = text.search(/^English tip:/m);
+  const main = marker >= 0 ? text.slice(0, marker).trimEnd() : text;
+  bubble.body.textContent = main;
+  if (marker >= 0) {
+    const tip = document.createElement("div");
+    tip.className = "coach";
+    tip.textContent = text.slice(marker).trim();
+    bubble.el.append(tip);
+  }
+  const m = document.createElement("div");
+  m.className = "meta";
+  if (meta) m.append(meta);
+  if ("speechSynthesis" in window) {
+    const b = document.createElement("button");
+    b.type = "button"; b.textContent = "🔊"; b.title = "Read aloud";
+    b.addEventListener("click", () => speak(main));
+    m.append(b);
+  }
+  bubble.el.append(m);
+  if ($("speak").checked) speak(main);
+  scrollDown();
+}
+
+// ---------- conversation ----------
+// After a mid-output fallback, blocks the declined model produced before the
+// last `fallback` marker must not be replayed (text and paired server-tool
+// blocks are fine). See the Claude API docs on refusals and fallbacks.
+function echoableContent(content) {
+  const lastFallback = content.map((b) => b.type).lastIndexOf("fallback");
+  if (lastFallback < 0) return content;
+  const resultIds = new Set(content.filter((b) => b.tool_use_id).map((b) => b.tool_use_id));
+  return content.filter((b, i) => {
+    if (i >= lastFallback) return true;
+    if (b.type === "text") return true;
+    if (b.type === "server_tool_use") return resultIds.has(b.id);
+    return b.tool_use_id !== undefined && b.type.endsWith("_tool_result");
+  });
+}
+
+async function runTurn(bubble) {
+  let shown = "";
+  // Server tools (web search) can pause a long turn; continue until it ends.
+  for (let hop = 0; hop < 5; hop++) {
+    const stream = client.beta.messages.stream({
+      model: MODEL,
+      max_tokens: 64000,
+      betas: ["server-side-fallback-2026-07-01"],
+      fallbacks: "default",
+      output_config: { effort: "low" },
+      system: systemPrompt(),
+      tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 5 }],
+      messages: history,
+    });
+    stream.on("text", (delta) => {
+      shown += delta;
+      bubble.body.textContent = shown;
+      scrollDown();
+    });
+    const msg = await stream.finalMessage();
+    history.push({ role: "assistant", content: echoableContent(msg.content) });
+
+    if (msg.stop_reason === "pause_turn") continue;
+    if (msg.stop_reason === "refusal") {
+      return { text: shown || "Sorry, I can't help with that one. Let's talk about something else?" };
+    }
+    const text = history
+      .slice(history.findLastIndex((m) => m.role === "user") + 1)
+      .flatMap((m) => m.content)
+      .filter((b) => b.type === "text")
+      .map((b) => b.text)
+      .join("");
+    return { text: text || shown, truncated: msg.stop_reason === "max_tokens" };
+  }
+  return { text: shown };
+}
+
+async function send(text) {
+  if (busy || !text.trim()) return;
+  if (!client) { requireKey(); return; }
+  busy = true; $("send").disabled = true;
+  addBubble("user", text);
+  history.push({ role: "user", content: text });
+  const turnStart = history.length;
+  const bubble = addBubble("assistant", "…");
+  try {
+    const { text: reply, truncated } = await runTurn(bubble);
+    const searchedThisTurn = history.slice(turnStart)
+      .some((m) => Array.isArray(m.content) && m.content.some((b) => b.type === "server_tool_use"));
+    const meta = searchedThisTurn ? "🔎 searched the web" : "";
+    renderAssistant(bubble, reply + (truncated ? "\n\n[reply was cut off]" : ""), meta);
+  } catch (err) {
+    // Roll back this turn so the history stays valid for the next message.
+    history.length = turnStart - 1;
+    bubble.el.remove();
+    let msg = err?.message || String(err);
+    if (err instanceof Anthropic.AuthenticationError) { msg = "Your API key was rejected. Please enter it again."; store.del(KEY_STORE); requireKey(); }
+    else if (err instanceof Anthropic.RateLimitError) msg = "Rate limited - wait a moment and try again.";
+    else if (err instanceof Anthropic.APIConnectionError) msg = "Couldn't reach Claude. Check your connection.";
+    else if (err instanceof Anthropic.APIError) msg = `Claude API error (${err.status}): ${err.message}`;
+    addBubble("error", msg);
+  } finally {
+    busy = false; $("send").disabled = false; $("input").focus();
+  }
+}
+
+$("composer").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const text = $("input").value;
+  $("input").value = ""; autosize();
+  send(text);
+});
+$("input").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); $("composer").requestSubmit(); }
+});
+function autosize() { const t = $("input"); t.style.height = "auto"; t.style.height = t.scrollHeight + "px"; }
+$("input").addEventListener("input", autosize);
+
+$("newChat").addEventListener("click", () => {
+  if (busy) return;
+  history = [];
+  $("log").innerHTML = '<p class="empty" id="empty">New chat. Say anything, in any language.</p>';
+  speechSynthesis?.cancel();
+});
+
+// ---------- voice ----------
+const LANG_CODES = {
+  "English": "en-US", "Bahasa Melayu": "ms-MY", "Bahasa Indonesia": "id-ID",
+  "Simplified Chinese": "zh-CN", "Tamil": "ta-IN", "Japanese": "ja-JP", "Korean": "ko-KR",
+  "Thai": "th-TH", "Vietnamese": "vi-VN", "Spanish": "es-ES", "French": "fr-FR", "Arabic": "ar-SA",
+};
+function speechLang() { return LANG_CODES[$("replyLang").value] || navigator.language || "en-US"; }
+
+function speak(text) {
+  if (!("speechSynthesis" in window) || !text) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  if ($("replyLang").value !== "auto") u.lang = speechLang();
+  speechSynthesis.speak(u);
+}
+
+const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+if (!Recognition) {
+  $("mic").classList.add("hidden");
+} else {
+  let rec = null;
+  $("mic").addEventListener("click", () => {
+    if (rec) { rec.stop(); return; }
+    rec = new Recognition();
+    rec.lang = speechLang();
+    rec.interimResults = true;
+    const before = $("input").value;
+    rec.onresult = (e) => {
+      const said = Array.from(e.results).map((r) => r[0].transcript).join("");
+      $("input").value = (before ? before + " " : "") + said;
+      autosize();
+    };
+    rec.onend = () => { rec = null; $("mic").classList.remove("recording"); };
+    rec.onerror = () => rec?.stop();
+    $("mic").classList.add("recording");
+    rec.start();
+  });
+}
+</script>
+</body>
+</html>
